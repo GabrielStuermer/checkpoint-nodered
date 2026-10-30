@@ -1,0 +1,664 @@
+[
+  {
+    "id": "tab_semaforo",
+    "type": "tab",
+    "label": "Semáforo Inteligente",
+    "disabled": false,
+    "info": "Dashboard do semáforo inteligente com catraca (FIAP Edge Computing)."
+  },
+  {
+    "id": "mqtt_broker",
+    "type": "mqtt-broker",
+    "name": "Mosquitto local",
+    "broker": "localhost",
+    "port": "1883",
+    "clientid": "nodered-dash-semaforo",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "ui_tab_sem",
+    "type": "ui_tab",
+    "name": "Semáforo Inteligente",
+    "icon": "dashboard",
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "g_sem",
+    "type": "ui_group",
+    "name": "Semáforo de pedestres",
+    "tab": "ui_tab_sem",
+    "order": 1,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "g_cat",
+    "type": "ui_group",
+    "name": "Catraca",
+    "tab": "ui_tab_sem",
+    "order": 2,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "g_sen",
+    "type": "ui_group",
+    "name": "Sensor PIR e alertas",
+    "tab": "ui_tab_sem",
+    "order": 3,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "g_evt",
+    "type": "ui_group",
+    "name": "Últimos eventos",
+    "tab": "ui_tab_sem",
+    "order": 4,
+    "disp": true,
+    "width": "6",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "g_his",
+    "type": "ui_group",
+    "name": "Histórico (últimos 10 min)",
+    "tab": "ui_tab_sem",
+    "order": 5,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "c_info",
+    "type": "comment",
+    "z": "tab_semaforo",
+    "name": "Tópicos MQTT: /TEF/semaforo001/attrs/{s,a,p}",
+    "info": "s = fase (0 verde, 1 amarelo, 2 vermelho)\na = ângulo da catraca (graus)\np = presença PIR (0/1)",
+    "x": 230,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "mq_s",
+    "type": "mqtt in",
+    "z": "tab_semaforo",
+    "name": "s",
+    "topic": "/TEF/semaforo001/attrs/s",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "mqtt_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 130,
+    "y": 120,
+    "wires": [
+      [
+        "fn_estado",
+        "tr_link"
+      ]
+    ]
+  },
+  {
+    "id": "fn_estado",
+    "type": "function",
+    "z": "tab_semaforo",
+    "name": "Interpretar fase",
+    "func": "const v = Number(msg.payload);\nif (![0, 1, 2].includes(v)) {\n    node.warn('Fase invalida: ' + msg.payload);\n    return null;\n}\nconst nomes = ['VERDE', 'AMARELO', 'VERMELHO'];\nglobal.set('estado', v);\nreturn [\n    { payload: v, nome: nomes[v] },\n    { payload: v, topic: 'Fase (0=verde, 1=amarelo, 2=vermelho)' },\n    { payload: 'Semáforo: ' + nomes[v] }\n];",
+    "outputs": 3,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 400,
+    "y": 120,
+    "wires": [
+      [
+        "ui_sem"
+      ],
+      [
+        "ch_fase"
+      ],
+      [
+        "fn_log"
+      ]
+    ]
+  },
+  {
+    "id": "ui_sem",
+    "type": "ui_template",
+    "z": "tab_semaforo",
+    "group": "g_sem",
+    "name": "Semáforo visual",
+    "order": 1,
+    "width": "6",
+    "height": "6",
+    "format": "<style>\n.sem{display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px;background:#222;border-radius:18px;width:110px;margin:4px auto}\n.luz{width:70px;height:70px;border-radius:50%;background:#555;opacity:.3;transition:all .3s}\n.luz.on.vermelho{background:#e74c3c;opacity:1;box-shadow:0 0 28px #e74c3c}\n.luz.on.amarelo{background:#f1c40f;opacity:1;box-shadow:0 0 28px #f1c40f}\n.luz.on.verde{background:#2ecc71;opacity:1;box-shadow:0 0 28px #2ecc71}\n.nome{text-align:center;font-weight:bold;font-size:18px;margin-top:4px}\n</style>\n<div class='sem'>\n  <div class='luz vermelho' ng-class='{on: msg.payload===2}'></div>\n  <div class='luz amarelo' ng-class='{on: msg.payload===1}'></div>\n  <div class='luz verde' ng-class='{on: msg.payload===0}'></div>\n</div>\n<div class='nome'>{{msg.nome || 'Aguardando dados...'}}</div>",
+    "storeOutMessages": true,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 650,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ch_fase",
+    "type": "ui_chart",
+    "z": "tab_semaforo",
+    "group": "g_his",
+    "name": "Gráfico da fase",
+    "label": "Fase do semáforo (0=verde, 1=amarelo, 2=vermelho)",
+    "order": 1,
+    "width": "12",
+    "height": "4",
+    "chartType": "line",
+    "legend": "false",
+    "xformat": "HH:mm:ss",
+    "interpolate": "step",
+    "nodata": "Aguardando dados...",
+    "dot": false,
+    "ymin": "0",
+    "ymax": "2",
+    "removeOlder": "10",
+    "removeOlderPoints": "",
+    "removeOlderUnit": "60",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#1f77b4",
+      "#aec7e8",
+      "#ff7f0e",
+      "#2ca02c",
+      "#98df8a",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "className": "",
+    "x": 650,
+    "y": 120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "mq_a",
+    "type": "mqtt in",
+    "z": "tab_semaforo",
+    "name": "a",
+    "topic": "/TEF/semaforo001/attrs/a",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "mqtt_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 130,
+    "y": 260,
+    "wires": [
+      [
+        "fn_angulo",
+        "tr_link"
+      ]
+    ]
+  },
+  {
+    "id": "fn_angulo",
+    "type": "function",
+    "z": "tab_semaforo",
+    "name": "Interpretar ângulo",
+    "func": "const v = Number(msg.payload);\nif (isNaN(v) || v < 0 || v > 180) {\n    node.warn('Angulo invalido: ' + msg.payload);\n    return null;\n}\nlet situacao = 'EM MOVIMENTO';\nif (v <= 5) situacao = 'FECHADA';\nelse if (v >= 85) situacao = 'ABERTA';\n// so registra no log quando a situacao muda, para nao poluir a lista\nconst anterior = flow.get('situacaoCatraca');\nflow.set('situacaoCatraca', situacao);\nconst log = situacao !== anterior ? { payload: 'Catraca: ' + situacao + ' (' + v + '°)' } : null;\nreturn [\n    { payload: v },\n    { payload: v, topic: 'Ângulo da catraca (graus)' },\n    { payload: situacao },\n    log\n];",
+    "outputs": 4,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 400,
+    "y": 260,
+    "wires": [
+      [
+        "ga_ang"
+      ],
+      [
+        "ch_ang"
+      ],
+      [
+        "tx_cat"
+      ],
+      [
+        "fn_log"
+      ]
+    ]
+  },
+  {
+    "id": "ga_ang",
+    "type": "ui_gauge",
+    "z": "tab_semaforo",
+    "name": "Ângulo",
+    "group": "g_cat",
+    "order": 1,
+    "width": "6",
+    "height": "4",
+    "gtype": "gage",
+    "title": "Ângulo da catraca",
+    "label": "graus",
+    "format": "{{value}}",
+    "min": 0,
+    "max": "90",
+    "colors": [
+      "#ca3838",
+      "#e6e600",
+      "#00b500"
+    ],
+    "seg1": "",
+    "seg2": "",
+    "diff": false,
+    "className": "",
+    "x": 650,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "tx_cat",
+    "type": "ui_text",
+    "z": "tab_semaforo",
+    "group": "g_cat",
+    "order": 2,
+    "width": "6",
+    "height": "1",
+    "name": "Situação da catraca",
+    "label": "Situação",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": true,
+    "font": "",
+    "fontSize": "20",
+    "color": "#000000",
+    "x": 660,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "ch_ang",
+    "type": "ui_chart",
+    "z": "tab_semaforo",
+    "group": "g_his",
+    "name": "Gráfico do ângulo",
+    "label": "Ângulo da catraca (graus)",
+    "order": 2,
+    "width": "12",
+    "height": "4",
+    "chartType": "line",
+    "legend": "false",
+    "xformat": "HH:mm:ss",
+    "interpolate": "linear",
+    "nodata": "Aguardando dados...",
+    "dot": false,
+    "ymin": "0",
+    "ymax": "90",
+    "removeOlder": "10",
+    "removeOlderPoints": "",
+    "removeOlderUnit": "60",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#1f77b4",
+      "#aec7e8",
+      "#ff7f0e",
+      "#2ca02c",
+      "#98df8a",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "className": "",
+    "x": 660,
+    "y": 300,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "mq_p",
+    "type": "mqtt in",
+    "z": "tab_semaforo",
+    "name": "p",
+    "topic": "/TEF/semaforo001/attrs/p",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "mqtt_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 130,
+    "y": 420,
+    "wires": [
+      [
+        "fn_presenca",
+        "tr_link"
+      ]
+    ]
+  },
+  {
+    "id": "fn_presenca",
+    "type": "function",
+    "z": "tab_semaforo",
+    "name": "Interpretar presença",
+    "func": "const v = Number(msg.payload);\nif (![0, 1].includes(v)) {\n    node.warn('Presenca invalida: ' + msg.payload);\n    return null;\n}\nconst anterior = flow.get('presAnterior') || 0;\nflow.set('presAnterior', v);\nconst estado = global.get('estado');\n\nlet total = flow.get('irregulares') || 0;\nlet alerta = null;\nlet log = null;\n\n// Borda de subida (0 -> 1) com o sinal vermelho = travessia irregular\nif (v === 1 && anterior === 0) {\n    if (estado === 2) {\n        total += 1;\n        flow.set('irregulares', total);\n        alerta = { topic: 'ALERTA', payload: 'Travessia irregular detectada no sinal vermelho!' };\n        log = { payload: 'ALERTA: travessia irregular (total: ' + total + ')' };\n    } else {\n        log = { payload: 'Pedestre detectado (travessia regular)' };\n    }\n}\nreturn [\n    { payload: v === 1 ? 'DETECTADA' : 'Livre', topic: 'Presença' },\n    alerta,\n    { payload: total },\n    log,\n    { payload: v, topic: 'Presença (0/1)' }\n];",
+    "outputs": 5,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 400,
+    "y": 420,
+    "wires": [
+      [
+        "tx_pres"
+      ],
+      [
+        "toast_alerta"
+      ],
+      [
+        "tx_cont"
+      ],
+      [
+        "fn_log"
+      ],
+      [
+        "ch_pres"
+      ]
+    ]
+  },
+  {
+    "id": "tx_pres",
+    "type": "ui_text",
+    "z": "tab_semaforo",
+    "group": "g_sen",
+    "order": 1,
+    "width": "6",
+    "height": "1",
+    "name": "Presença",
+    "label": "Presença (PIR)",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": true,
+    "font": "",
+    "fontSize": "20",
+    "color": "#000000",
+    "x": 660,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "id": "tx_cont",
+    "type": "ui_text",
+    "z": "tab_semaforo",
+    "group": "g_sen",
+    "order": 2,
+    "width": "6",
+    "height": "1",
+    "name": "Contador de travessias irregulares",
+    "label": "Travessias irregulares",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": true,
+    "font": "",
+    "fontSize": "20",
+    "color": "#c0392b",
+    "x": 700,
+    "y": 440,
+    "wires": []
+  },
+  {
+    "id": "toast_alerta",
+    "type": "ui_toast",
+    "z": "tab_semaforo",
+    "position": "top right",
+    "displayTime": "5",
+    "highlight": "#e74c3c",
+    "sendall": true,
+    "outputs": 0,
+    "ok": "OK",
+    "cancel": "",
+    "raw": false,
+    "className": "",
+    "topic": "",
+    "name": "Alerta na tela",
+    "x": 650,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "id": "ch_pres",
+    "type": "ui_chart",
+    "z": "tab_semaforo",
+    "group": "g_his",
+    "name": "Gráfico de presença",
+    "label": "Presença detectada (0/1)",
+    "order": 3,
+    "width": "12",
+    "height": "3",
+    "chartType": "line",
+    "legend": "false",
+    "xformat": "HH:mm:ss",
+    "interpolate": "step",
+    "nodata": "Aguardando dados...",
+    "dot": false,
+    "ymin": "0",
+    "ymax": "1",
+    "removeOlder": "10",
+    "removeOlderPoints": "",
+    "removeOlderUnit": "60",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#d62728",
+      "#aec7e8",
+      "#ff7f0e",
+      "#2ca02c",
+      "#98df8a",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "className": "",
+    "x": 670,
+    "y": 520,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "bt_reset",
+    "type": "ui_button",
+    "z": "tab_semaforo",
+    "name": "Zerar contador",
+    "group": "g_sen",
+    "order": 3,
+    "width": "6",
+    "height": "1",
+    "passthru": false,
+    "label": "Zerar contador",
+    "tooltip": "",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "refresh",
+    "payload": "reset",
+    "payloadType": "str",
+    "topic": "reset",
+    "topicType": "str",
+    "x": 140,
+    "y": 560,
+    "wires": [
+      [
+        "fn_reset"
+      ]
+    ]
+  },
+  {
+    "id": "fn_reset",
+    "type": "function",
+    "z": "tab_semaforo",
+    "name": "Zerar contador",
+    "func": "flow.set('irregulares', 0);\nreturn [\n    { payload: 0 },\n    { payload: 'Contador de travessias zerado' }\n];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 400,
+    "y": 560,
+    "wires": [
+      [
+        "tx_cont"
+      ],
+      [
+        "fn_log"
+      ]
+    ]
+  },
+  {
+    "id": "tr_link",
+    "type": "trigger",
+    "z": "tab_semaforo",
+    "name": "Sem dados por 20 s?",
+    "op1": "ONLINE",
+    "op2": "OFFLINE",
+    "op1type": "str",
+    "op2type": "str",
+    "duration": "20",
+    "extend": true,
+    "overrideDelay": false,
+    "units": "s",
+    "reset": "",
+    "bytopic": "all",
+    "topic": "topic",
+    "outputs": 1,
+    "x": 400,
+    "y": 620,
+    "wires": [
+      [
+        "tx_link"
+      ]
+    ]
+  },
+  {
+    "id": "tx_link",
+    "type": "ui_text",
+    "z": "tab_semaforo",
+    "group": "g_sen",
+    "order": 4,
+    "width": "6",
+    "height": "1",
+    "name": "Conexão",
+    "label": "Dispositivo",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": true,
+    "font": "",
+    "fontSize": "20",
+    "color": "#000000",
+    "x": 660,
+    "y": 620,
+    "wires": []
+  },
+  {
+    "id": "fn_log",
+    "type": "function",
+    "z": "tab_semaforo",
+    "name": "Registrar evento",
+    "func": "const lista = flow.get('eventos') || [];\nconst hora = new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' });\nlista.unshift(hora + ' - ' + msg.payload);\nif (lista.length > 12) lista.length = 12;\nflow.set('eventos', lista);\nreturn { payload: lista };",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 880,
+    "y": 300,
+    "wires": [
+      [
+        "ui_log"
+      ]
+    ]
+  },
+  {
+    "id": "ui_log",
+    "type": "ui_template",
+    "z": "tab_semaforo",
+    "group": "g_evt",
+    "name": "Lista de eventos",
+    "order": 1,
+    "width": "6",
+    "height": "7",
+    "format": "<div style='font-family:monospace;font-size:13px;line-height:1.6'>\n  <div ng-repeat='e in msg.payload track by $index'>{{e}}</div>\n  <div ng-if='!msg.payload'>Aguardando eventos...</div>\n</div>",
+    "storeOutMessages": true,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 1100,
+    "y": 300,
+    "wires": [
+      []
+    ]
+  }
+]
