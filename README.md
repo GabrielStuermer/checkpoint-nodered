@@ -4,13 +4,9 @@ Checkpoint de Edge Computing & Computer Systems (FIAP).
 
 ## Integrantes
 
-- Luis Gabriel Stuermer
-- _(adicionar os demais integrantes)_
-
-## Entrega
-
-- **Gravação da tela do dashboard:** _(colar aqui o link do vídeo — YouTube não listado ou Drive)_
-- **Repositório:** _(colar aqui o link do GitHub)_
+- Luis Gabriel Pinheiro Stuermer
+- Arthur Veiga Demétrio
+- Carlos Adami
 
 ## Sobre o projeto
 
@@ -79,7 +75,8 @@ dashboard-nodered/
 
 - [Node.js](https://nodejs.org) 18 ou superior
 - [Node-RED](https://nodered.org/docs/getting-started/local): `npm install -g --unsafe-perm node-red`
-- Broker [Mosquitto](https://mosquitto.org/download/) rodando na porta 1883
+- Broker [Mosquitto](https://mosquitto.org/download/) rodando na porta 1883. Com Docker, basta um comando:
+  `docker run -d --name mosquitto -p 1883:1883 eclipse-mosquitto:2 mosquitto -c /mosquitto-no-auth.conf`
 - Python 3 com `paho-mqtt` (só para o simulador): `pip install paho-mqtt`
 
 ### 2. Instalar o pacote do dashboard
